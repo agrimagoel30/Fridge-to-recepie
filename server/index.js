@@ -1,10 +1,17 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { generateRecipeWithLLM } from './services/llm.js';
 import { validateAndSanitizeRecipe } from './schemas/recipeSchema.js';
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const clientDistPath = path.join(__dirname, '../client/dist');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -12,6 +19,11 @@ const PORT = process.env.PORT || 5000;
 // Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
+
+// Serve built frontend if available
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -159,6 +171,22 @@ app.post('/api/validate', (req, res) => {
   res.json(result);
 });
 
+// Fallback for any client routes: serve React index.html or redirect to Vite dev server
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+
+  const indexPath = path.join(clientDistPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+
+  // If dist not built yet, redirect to Vite dev server on port 3000
+  res.redirect('http://localhost:3000');
+});
+
 app.listen(PORT, () => {
   console.log(`[Fridge-to-Recipe API Server] listening on http://localhost:${PORT}`);
+  console.log(`[Frontend Accessible at] http://localhost:3000 (Vite) and http://localhost:${PORT}`);
 });
