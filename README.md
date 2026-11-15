@@ -180,3 +180,5 @@ As requested in the assignment guidelines:
 * **Company**: Flam
 * **Topic**: Fridge-to-Recipe Interactive Assistant
 * **Target Deadline**: 15th November 2026
+#   F r i d g e - t o - r e c e p i e  
+ 
