@@ -33,7 +33,6 @@ export function App() {
   }, [darkMode]);
 
   // Provider and API key settings
-  const [selectedProvider, setSelectedProvider] = useState('auto');
   const [customApiKey, setCustomApiKey] = useState('');
 
   // Modals
@@ -59,8 +58,7 @@ export function App() {
     updateRecipeLocally,
     resetRecipe
   } = useRecipeGenerator({
-    customApiKey,
-    selectedProvider
+    customApiKey
   });
 
   // Handler for Bad AI Output Simulator
@@ -170,8 +168,6 @@ export function App() {
         onClose={() => setIsSettingsOpen(false)}
         customApiKey={customApiKey}
         setCustomApiKey={setCustomApiKey}
-        selectedProvider={selectedProvider}
-        setSelectedProvider={setSelectedProvider}
       />
 
       <BadOutputSimulator

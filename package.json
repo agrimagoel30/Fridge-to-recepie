@@ -1,20 +1,19 @@
 {
-  "name": "fridge-to-recipe-suite",
+  "name": "fridge-to-recipe",
   "version": "1.0.0",
-  "description": "Fridge-to-Recipe AI Cooking Assistant - Frontend Internship Assignment for Flam",
+  "description": "AI-powered fridge-to-recipe cooking assistant built with React, Node.js, and Groq LLM",
   "private": true,
+  "type": "module",
   "workspaces": [
     "server",
     "client"
   ],
   "scripts": {
-    "start": "concurrently -k -n \"BACKEND,FRONTEND\" -c \"magenta,cyan\" \"npm run start --workspace=server\" \"npm run dev --workspace=client\"",
-    "start:server": "npm run start --workspace=server",
-    "start:client": "npm run dev --workspace=client",
-    "build": "npm run build --workspace=client",
+    "dev": "concurrently -k -n \"SERVER,CLIENT\" -c \"magenta,cyan\" \"npm run start --workspace=server\" \"npm run dev --workspace=client\"",
+    "start": "npm run dev",
     "build:render": "npm install && npm run build --workspace=client",
     "start:render": "node server/index.js",
-    "test": "node server/verify.js"
+    "build": "npm run build --workspace=client"
   },
   "devDependencies": {
     "concurrently": "^9.1.2"
