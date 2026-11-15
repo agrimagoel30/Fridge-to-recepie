@@ -62,7 +62,7 @@ CRITICAL INSTRUCTIONS:
 3. Ingredients MUST have smart, realistic 'swaps' (substitutes) so the user can click to substitute ingredients.
 4. Steps MUST be detailed, sequential, actionable, and include durationMinutes wherever cooking or simmering is involved.`;
 
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_MODEL = 'llama3-70b-8192';
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
 export async function generateRecipeWithLLM({
