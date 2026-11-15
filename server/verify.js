@@ -46,4 +46,4 @@ setTimeout(async () => {
     serverProc.kill();
     process.exit(0);
   }
-}, 1500);
+}, 2000);

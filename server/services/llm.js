@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { validateAndSanitizeRecipe } from '../schemas/recipeSchema.js';
 import { generateMockRecipe } from './mock.js';
 
@@ -63,15 +62,17 @@ CRITICAL INSTRUCTIONS:
 3. Ingredients MUST have smart, realistic 'swaps' (substitutes) so the user can click to substitute ingredients.
 4. Steps MUST be detailed, sequential, actionable, and include durationMinutes wherever cooking or simmering is involved.`;
 
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
 export async function generateRecipeWithLLM({
   prompt,
   refinement = null,
   currentRecipe = null,
   apiKey = null,
-  provider = 'auto',
   simulateFailure = null
 }) {
-  // Check if simulation mode is triggered for testing
+  // ── Simulation / failure-mode tests ────────────────────────────────────────
   if (simulateFailure) {
     if (simulateFailure === 'malformed_json') {
       return {
@@ -90,7 +91,6 @@ export async function generateRecipeWithLLM({
       };
     }
     if (simulateFailure === 'slow_timeout') {
-      // Delay for 12 seconds to test timeout handling
       await new Promise(res => setTimeout(res, 12000));
       return {
         success: false,
@@ -103,114 +103,90 @@ export async function generateRecipeWithLLM({
     }
   }
 
-  const geminiKey = apiKey || process.env.GEMINI_API_KEY;
+  // ── Resolve Groq API key ───────────────────────────────────────────────────
+  // Priority: key passed from client settings modal → server .env variable
   const groqKey = apiKey || process.env.GROQ_API_KEY;
-  const openAiKey = apiKey || process.env.OPENAI_API_KEY;
 
-  // 1. Try Gemini if key is provided or present in env
-  if (geminiKey && (provider === 'gemini' || provider === 'auto')) {
+  // ── Groq call ─────────────────────────────────────────────────────────────
+  if (groqKey) {
     try {
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.4
-        }
-      });
+      let userPrompt;
 
-      let userPrompt = `Home cook fridge inventory:\n"${prompt}"\nCreate an awesome recipe based on these ingredients.`;
       if (refinement && currentRecipe) {
-        userPrompt = `Existing recipe JSON:\n${JSON.stringify(currentRecipe)}\n\nUser request to edit/refine this recipe:\n"${refinement}"\nUpdate the recipe while preserving the core structure.`;
-      }
-
-      const response = await model.generateContent([
-        { text: SYSTEM_PROMPT },
-        { text: userPrompt }
-      ]);
-
-      const rawText = response.response.text();
-      const validated = validateAndSanitizeRecipe(rawText);
-      if (validated.success) {
-        return {
-          success: true,
-          provider: 'Gemini (gemini-1.5-flash)',
-          data: validated.data
-        };
+        userPrompt = `Existing recipe JSON:\n${JSON.stringify(currentRecipe)}\n\nUser request to edit/refine this recipe:\n"${refinement}"\nUpdate the recipe while preserving the core structure and returning valid JSON only.`;
       } else {
-        // Return structured failure info
-        return {
-          success: false,
-          provider: 'Gemini',
-          error: validated.error,
-          rawOutput: validated.rawOutput,
-          issues: validated.issues
-        };
-      }
-    } catch (err) {
-      console.warn('Gemini call failed:', err.message);
-      // If user explicitly chose Gemini, return the error
-      if (provider === 'gemini') {
-        return {
-          success: false,
-          provider: 'Gemini',
-          error: `Gemini API error: ${err.message}`
-        };
-      }
-    }
-  }
-
-  // 2. Try Groq if key is present
-  if (groqKey && (provider === 'groq' || provider === 'auto')) {
-    try {
-      let userPrompt = `Fridge inventory: "${prompt}"`;
-      if (refinement && currentRecipe) {
-        userPrompt = `Existing recipe:\n${JSON.stringify(currentRecipe)}\n\nRefinement request: "${refinement}"`;
+        userPrompt = `Home cook fridge inventory:\n"${prompt}"\nCreate an extraordinary, practical, delicious recipe based on these ingredients.`;
       }
 
-      const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      const response = await fetch(GROQ_API_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${groqKey}`
         },
         body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
+          model: GROQ_MODEL,
           messages: [
             { role: 'system', content: SYSTEM_PROMPT },
             { role: 'user', content: userPrompt }
           ],
           response_format: { type: 'json_object' },
-          temperature: 0.3
+          temperature: 0.4,
+          max_tokens: 4096
         })
       });
 
-      if (groqRes.ok) {
-        const groqData = await groqRes.json();
-        const content = groqData.choices?.[0]?.message?.content;
-        const validated = validateAndSanitizeRecipe(content);
-        if (validated.success) {
-          return {
-            success: true,
-            provider: 'Groq (llama-3.3-70b)',
-            data: validated.data
-          };
-        }
+      if (!response.ok) {
+        const errBody = await response.json().catch(() => ({}));
+        throw new Error(`Groq API error ${response.status}: ${errBody?.error?.message || response.statusText}`);
       }
+
+      const groqData = await response.json();
+      const content = groqData.choices?.[0]?.message?.content;
+
+      if (!content) {
+        throw new Error('Groq returned an empty response');
+      }
+
+      const validated = validateAndSanitizeRecipe(content);
+
+      if (validated.success) {
+        return {
+          success: true,
+          provider: `Groq (${GROQ_MODEL})`,
+          data: validated.data
+        };
+      }
+
+      // Groq replied but the JSON failed schema validation
+      return {
+        success: false,
+        provider: 'Groq',
+        error: validated.error,
+        rawOutput: validated.rawOutput,
+        issues: validated.issues
+      };
+
     } catch (err) {
-      console.warn('Groq call failed:', err.message);
+      console.error('[Groq Error]', err.message);
+      return {
+        success: false,
+        provider: 'Groq',
+        error: `Groq API call failed: ${err.message}`
+      };
     }
   }
 
-  // 3. Fallback: High-quality Intelligent Mock Generator
-  // This guarantees zero crashes during review even without any API key!
-  // It parses ingredients, constructs realistic swaps, checks and scales.
+  // ── Fallback: Zero-Config Intelligent Mock Engine ─────────────────────────
+  // Runs automatically when no GROQ_API_KEY is set, so the app never crashes
+  // during local dev or reviewer testing without an API key.
+  console.info('[LLM] No GROQ_API_KEY found — using built-in mock engine');
   const mockResult = generateMockRecipe(prompt, refinement, currentRecipe);
   const validated = validateAndSanitizeRecipe(mockResult);
 
   return {
     success: true,
-    provider: 'Built-in Intelligent Engine (Zero-Config Mode)',
+    provider: 'Built-in Intelligent Engine (Zero-Config Mode — add GROQ_API_KEY to enable real AI)',
     isMock: true,
     data: validated.data
   };

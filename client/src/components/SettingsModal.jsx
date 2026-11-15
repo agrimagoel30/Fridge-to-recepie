@@ -76,18 +76,13 @@ export function SettingsModal({
         <div className="space-y-4">
           <div>
             <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1.5">
-              Select AI Model Provider
+              AI Model Provider
             </label>
-            <select
-              value={selectedProvider}
-              onChange={(e) => setSelectedProvider(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-800 text-stone-900 dark:text-stone-100 text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none"
-            >
-              <option value="auto">Auto (Gemini / Groq with Zero-Config Fallback)</option>
-              <option value="gemini">Google Gemini (gemini-1.5-flash)</option>
-              <option value="groq">Groq (llama-3.3-70b-versatile)</option>
-              <option value="mock">Zero-Config Intelligent Mock (No Key Required)</option>
-            </select>
+            <div className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-800 text-stone-900 dark:text-stone-100 text-sm flex items-center gap-2">
+              <span>🟢</span>
+              <span className="font-semibold">Groq — llama-3.3-70b-versatile</span>
+              <span className="ml-auto text-xs text-stone-400">(Active)</span>
+            </div>
           </div>
 
           {/* Optional API Key override */}
@@ -95,7 +90,7 @@ export function SettingsModal({
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-bold text-stone-700 dark:text-stone-300 flex items-center gap-1">
                 <Key className="w-3.5 h-3.5 text-orange-500" />
-                <span>Custom API Key (Optional)</span>
+                <span>Groq API Key (Optional Override)</span>
               </label>
               <span className="text-[10px] text-stone-400">
                 Session only
@@ -105,7 +100,7 @@ export function SettingsModal({
               type="password"
               value={customApiKey}
               onChange={(e) => setCustomApiKey(e.target.value)}
-              placeholder="Leave blank to use server .env or zero-config mock engine"
+              placeholder="Leave blank to use server .env GROQ_API_KEY or zero-config mock engine"
               className="w-full px-3.5 py-2.5 rounded-xl bg-stone-50 dark:bg-stone-950 border border-stone-300 dark:border-stone-800 text-stone-900 dark:text-stone-100 text-sm placeholder:text-stone-400 focus:ring-2 focus:ring-orange-500 focus:outline-none"
             />
             <p className="text-[11px] text-stone-500 dark:text-stone-400 mt-1">
