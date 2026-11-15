@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: fridge-to-recipe
+    runtime: node
+    plan: free
+    buildCommand: npm run build:render
+    startCommand: npm run start:render
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: GEMINI_API_KEY
+        sync: false       # You fill this in Render's dashboard
+      - key: GROQ_API_KEY
+        sync: false

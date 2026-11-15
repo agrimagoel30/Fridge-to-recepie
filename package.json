@@ -12,6 +12,8 @@
     "start:server": "npm run start --workspace=server",
     "start:client": "npm run dev --workspace=client",
     "build": "npm run build --workspace=client",
+    "build:render": "npm install && npm run build --workspace=client",
+    "start:render": "node server/index.js",
     "test": "node server/verify.js"
   },
   "devDependencies": {
